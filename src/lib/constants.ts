@@ -1,5 +1,18 @@
 // src/constants/navigation.ts
 
+import { ReactNode } from "react";
+import Link from "next/link";
+import {
+  LucideIcon,
+  HomeIcon,
+  SearchIcon,
+  User2Icon,
+  LayoutGridIcon,
+  HeartIcon,
+  ShoppingCartIcon,
+  BellIcon,
+} from "lucide-react";
+
 // =====================================================
 // Utilities
 // =====================================================
@@ -21,18 +34,18 @@ export const slugify = (value: string): string =>
 // Navigation
 // =====================================================
 
-export type MegaMenuSubItem = {
+export type DropDownSubItem = {
   name: string;
   href: string;
 };
 
-export type MegaMenuItem = {
+export type DropDownItem = {
   name: string;
   href: string;
-  subItems?: MegaMenuSubItem[];
+  subItems?: DropDownSubItem[];
 };
 
-export type MegaMenuCard = {
+export type DropDownCard = {
   title: string;
   description: string;
   href: string;
@@ -42,15 +55,11 @@ export type MegaMenuCard = {
 export type NavItem = {
   name: string;
   href: string;
-  megaMenuItems?: MegaMenuItem[];
-  megaMenuCards?: MegaMenuCard[];
+  dropDownItems?: DropDownItem[];
+  dropDownCards?: DropDownCard[];
 };
 
 export const NAV_ITEMS: NavItem[] = [
-  {
-    name: "Motors",
-    href: "/category/motors",
-  },
   {
     name: "Today's Deals",
     href: "/deals",
@@ -72,16 +81,73 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/history",
   },
   {
-    name: "Coupons",
-    href: "/coupons",
-  },
-  {
     name: "Customer Service",
     href: "/customer-service",
   },
   {
     name: "Sell",
     href: "/sell",
+  },
+];
+
+// NOTE: `action` for Search is injected at render time via useSearchPanel hook.
+
+type BadgeVariant = "count" | "dot";
+
+interface BadgeConfig {
+  variant: BadgeVariant;
+  storeKey: "cart" | "wishlist" | "notification";
+}
+
+export type ActionButtonProps = {
+  id: number;
+  icon: LucideIcon;
+  label?: string;
+  href?: string;
+  /** "search" signals the button opens the search panel (action injected at render) */
+  actionId?: "search";
+  mobile?: boolean;
+  badge?: BadgeConfig;
+};
+
+export const ACTIONBUTTONS: ActionButtonProps[] = [
+  {
+    id: 1,
+    icon: HeartIcon,
+    label: "Wishlist",
+    href: "/cart?tab=wishlist",
+    mobile: true,
+    badge: { variant: "count", storeKey: "wishlist" },
+  },
+  {
+    id: 2,
+    icon: SearchIcon,
+    label: "Search",
+    actionId: "search",
+    mobile: true,
+  },
+  {
+    id: 3,
+    icon: User2Icon,
+    label: "Account",
+    href: "/dashboard/account",
+    mobile: true,
+  },
+  {
+    id: 4,
+    icon: ShoppingCartIcon,
+    label: "Cart",
+    href: "/cart",
+    mobile: false,
+    badge: { variant: "count", storeKey: "cart" },
+  },
+  {
+    id: 5,
+    icon: BellIcon,
+    label: "Alert",
+    href: "/notification",
+    mobile: true,
+    badge: { variant: "dot", storeKey: "notification" },
   },
 ];
 
@@ -373,10 +439,7 @@ export const FOOTER_LINKS: FooterLink[] = [
 // Device Detection
 // =====================================================
 
-export type DeviceType =
-  | "mobile"
-  | "tablet"
-  | "desktop";
+export type DeviceType = "mobile" | "tablet" | "desktop";
 
 export const getDeviceType = (): DeviceType => {
   if (typeof window === "undefined") {

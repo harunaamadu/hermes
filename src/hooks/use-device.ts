@@ -1,5 +1,5 @@
-import { DeviceType, getDeviceType } from "@/lib/constants";
 import { useEffect, useState } from "react";
+import { DeviceType, getDeviceType } from "@/lib/constants";
 
 export const useDeviceType = () => {
   const [device, setDevice] =

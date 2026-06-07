@@ -1,44 +1,29 @@
-// components/providers/overlay-provider.tsx
 "use client";
 
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-
-type OverlayContextValue = {
-  showOverlay: () => void;
-  hideOverlay: () => void;
-};
-
-const OverlayContext = createContext<OverlayContextValue | null>(null);
+import { useUIStore } from "@/store/ui-store";
 
 export function OverlayProvider({ children }: { children: React.ReactNode }) {
-  const [count, setCount] = useState(0);
-
-  const showOverlay = useCallback(() => setCount((n) => n + 1), []);
-  const hideOverlay = useCallback(() => setCount((n) => Math.max(0, n - 1)), []);
+  const isOpen = useUIStore((s) => s.isOverlayOpen);
+  const closeAll = useUIStore((s) => s.closeAll);
 
   return (
-    <OverlayContext.Provider value={{ showOverlay, hideOverlay }}>
+    <>
       {children}
+
       <AnimatePresence>
-        {count > 0 && (
+        {isOpen && (
           <motion.div
             key="overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-45 pointer-events-none"
-            aria-hidden="true"
+            className="fixed inset-0 bg-black/60 z-45"
+            onClick={closeAll}
           />
         )}
       </AnimatePresence>
-    </OverlayContext.Provider>
+    </>
   );
-}
-
-export function useOverlay() {
-  const ctx = useContext(OverlayContext);
-  if (!ctx) throw new Error("useOverlay must be used within <OverlayProvider>");
-  return ctx;
 }

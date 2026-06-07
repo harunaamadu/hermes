@@ -2,33 +2,90 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Cat, LayoutGrid, X, XIcon } from "lucide-react";
+import { ChevronDown, LayoutGrid, MenuIcon, XIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
-import Categories from "./Categories";
-import { useOverlay } from "@/components/providers/OverlayProvider";
+import { useDeviceType } from "@/hooks/use-device";
 import { useClickOutside } from "@/hooks/use-click-outside";
 
+import { NAV_ITEMS } from "@/lib/constants";
+import { AnimatePresence, motion } from "framer-motion";
+import { containerVariants, itemVariants } from "@/lib/animations";
+
+import { useUIStore } from "@/store/ui-store";
+import MobileMenu from "./MobileMenu";
+import Categories from "./Categories";
+import MobileNav from "./MobileNav";
+import Logo from "./Logo";
+import ActionButtons from "./ActionButtons";
+
+const ITEM_WIDTH = 160;
+
 const Header = () => {
-  const [isCategoriesOpen, setOpen] = useState(false);
-  const { showOverlay, hideOverlay } = useOverlay();
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const categoriesRef = useRef<HTMLDivElement>(null);
 
-  const openMenu = () => { setOpen(true);  showOverlay(); };
-  const closeMenu = () => { setOpen(false); hideOverlay(); };
+  const isMobileDevice = useIsMobile() ?? useDeviceType();
 
-  useClickOutside(wrapperRef as React.RefObject<HTMLElement>, closeMenu, isCategoriesOpen);
+  const [visibleItems, setVisibleItems] = useState(NAV_ITEMS);
+  const [overflowItems, setOverflowItems] = useState<typeof NAV_ITEMS>([]);
 
-  const isMobileDevice = useIsMobile() ?? false;
+  // =========================
+  // GLOBAL UI STORE (NEW ARCHITECTURE)
+  // =========================
+  const activePanel = useUIStore((s) => s.activePanel);
+  const openPanel = useUIStore((s) => s.openPanel);
+  const closeAll = useUIStore((s) => s.closeAll);
 
-  const navSkeletonWidths = ["w-16", "w-20", "w-24", "w-28", "w-32"];
+  // Derived states (IMPORTANT FIX)
+  const isMenuOpen = activePanel === "menu";
+  const isCategoriesOpen = activePanel === "categories";
+  const isMoreOpen = activePanel === "more";
+
+  // =========================
+  // CLICK OUTSIDE (GLOBAL RESET)
+  // =========================
+  useClickOutside(
+    [navRef, menuRef, categoriesRef] as React.RefObject<HTMLElement>[],
+    closeAll,
+    isMenuOpen || isCategoriesOpen || isMoreOpen,
+  );
+
+  // =========================
+  // RESPONSIVE NAV CALCULATION
+  // =========================
+  useEffect(() => {
+    const calculateItems = () => {
+      if (!navRef.current) return;
+
+      const width = navRef.current.offsetWidth;
+      const maxItems = Math.max(1, Math.floor((width - 120) / ITEM_WIDTH));
+
+      setVisibleItems(NAV_ITEMS.slice(0, maxItems));
+      setOverflowItems(NAV_ITEMS.slice(maxItems));
+    };
+
+    calculateItems();
+
+    const observer = new ResizeObserver(calculateItems);
+    if (navRef.current) observer.observe(navRef.current);
+
+    window.addEventListener("resize", calculateItems);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", calculateItems);
+    };
+  }, []);
 
   return (
     <>
+      {/* ===================== */}
       {/* Announcement Bar */}
-      <div className="w-full bg-muted text-muted-foreground">
+      {/* ===================== */}
+      <div id="announcement" className="w-full bg-muted text-muted-foreground">
         <div className="flex items-center justify-between w-full max-w-360 mx-auto py-2 px-4 md:px-6 lg:px-8 text-xs">
           <p>Announcement: Free shipping on orders over $50!</p>
 
@@ -42,76 +99,123 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur-md">
+      {/* ========================= */}
+      {/* HEADER */}
+      {/* ========================= */}
+      <header
+        id="header"
+        className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur-md"
+      >
         <div className="flex items-center justify-between w-full max-w-360 mx-auto px-4 py-4 md:px-6 lg:px-8">
+          {/* ========================= */}
+          {/* LEFT SIDE */}
+          {/* ========================= */}
           <div className="flex items-center gap-6">
-            {/* Logo */}
-            <Link
-              href="/"
-              className="font-heading text-2xl md:text-3xl font-bold select-none group"
+            {/* MENU BUTTON */}
+            <Button
+              variant="outline"
+              size="icon-lg"
+              onClick={() => openPanel("menu")}
+              aria-label="Open menu"
+              className="flex md:hidden"
             >
-              Her
-              <span className="text-inherit group-hover:text-primary transition-colors ease-out">
-                mes
-              </span>
-            </Link>
+              <MenuIcon className="size-4" />
+            </Button>
 
-            <div className="relative" ref={wrapperRef}>
+            {/* LOGO */}
+            <Logo />
+
+            {/* CATEGORIES */}
+            <div ref={categoriesRef} className="relative hidden md:block">
               <Button
                 variant="outline"
                 size="lg"
-                className=""
-                onClick={() => {
-                  setOpen((prev) => !prev);
-                }}
-                aria-label="Toggle mega navigation"
+                onClick={() => openPanel("categories")}
+                aria-label="Open categories"
               >
-                {React.createElement(isCategoriesOpen ? XIcon : LayoutGrid, {
-                  className: "size-4",
-                })}{" "}
+                {isCategoriesOpen ? (
+                  <LayoutGrid className="size-4" />
+                ) : (
+                  <LayoutGrid className="size-4" />
+                )}
                 All
               </Button>
 
-              <Categories open={isCategoriesOpen} onClose={closeMenu} />
+              <Categories />
             </div>
           </div>
 
-          {/* Desktop Navigation Skeleton */}
+          {/* ========================= */}
+          {/* DESKTOP NAV */}
+          {/* ========================= */}
           <nav
-            className="hidden lg:flex items-center gap-6"
+            ref={navRef}
+            className="hidden lg:flex items-center justify-center gap-6 flex-1"
             aria-label="desktop navigation"
           >
-            {Array.from({
-              length: isMobileDevice ? 3 : 5,
-            }).map((_, index) => (
-              <Skeleton
-                key={index}
-                className={`h-6 ${navSkeletonWidths[index % navSkeletonWidths.length]}`}
-              />
+            {visibleItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="text-sm hover:text-primary shrink-0"
+              >
+                {item.name}
+              </Link>
             ))}
+
+            {/* MORE DROPDOWN */}
+            <AnimatePresence mode="wait">
+              {overflowItems.length > 0 && (
+                <div className="relative shrink-0">
+                  <button
+                    onClick={() => openPanel(isMoreOpen ? null : "more")}
+                    className="flex items-center gap-1 text-sm"
+                  >
+                    More
+                    <ChevronDown className="size-4" />
+                  </button>
+
+                  {isMoreOpen && (
+                    <motion.div
+                      variants={containerVariants}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                      className="absolute top-full right-0 mt-2 min-w-56 rounded-lg border bg-background shadow-lg py-2 z-50"
+                    >
+                      {overflowItems.map((item) => (
+                        <motion.a
+                          key={item.href}
+                          href={item.href}
+                          variants={itemVariants}
+                          className="block px-4 py-2 hover:bg-muted"
+                        >
+                          {item.name}
+                        </motion.a>
+                      ))}
+                    </motion.div>
+                  )}
+                </div>
+              )}
+            </AnimatePresence>
           </nav>
 
-          {/* Action Buttons Skeleton */}
-          <nav className="flex items-center gap-3" aria-label="header actions">
-            {Array.from({ length: isMobileDevice ? 2 : 4 }).map((_, index) => (
-              <Skeleton key={index} className="size-10 cursor-pointer" />
-            ))}
-          </nav>
+          {/* ========================= */}
+          {/* ACTION BUTTONS */}
+          {/* ========================= */}
+          <ActionButtons />
         </div>
       </header>
 
-      {/* Bottom Navigation Skeleton (Mobile Only) */}
-      {isMobileDevice && (
-        <nav
-          className="flex items-center justify-evenly gap-4 fixed bottom-0 left-1/2 -translate-x-1/2 bg-background/90 backdrop-blur-md border-t p-3 border-muted max-w-full w-80"
-          aria-label="mobile navigation"
-        >
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="size-10 cursor-pointer" />
-          ))}
-        </nav>
-      )}
+      {/* ========================= */}
+      {/* MOBILE MENU */}
+      {/* ========================= */}
+      <MobileMenu ref={menuRef} />
+
+      {/* ========================= */}
+      {/* MOBILE BOTTOM NAV */}
+      {/* ========================= */}
+      {isMobileDevice && <MobileNav />}
     </>
   );
 };

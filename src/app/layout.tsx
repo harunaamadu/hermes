@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Header from "@/components/shared/header/Header";
 import { OverlayProvider } from "@/components/providers/OverlayProvider";
+import { SearchPanelProvider } from "@/context/search-context";
+import SearchPanel from "@/components/shared/search/SearchPanel";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -42,11 +44,15 @@ export default function RootLayout({
         "font-sans",
         inter.variable,
       )}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col transition-all duration-300">
         <OverlayProvider>
-          <Header />
-          <TooltipProvider>{children}</TooltipProvider>
+          <SearchPanelProvider>
+            <Header />
+            <SearchPanel />
+            <TooltipProvider>{children}</TooltipProvider>
+          </SearchPanelProvider>
         </OverlayProvider>
       </body>
     </html>
