@@ -31,25 +31,31 @@ const Hero = () => {
     );
   });
 
-  // isMobile can be false (not mobile) or undefined (not yet resolved).
-  // Only fall back to deviceType when isMobile is null/undefined.
-  const isMobileDevice = isMobile == null ? deviceType === "mobile" : isMobile;
+  // isMobile is undefined until the hook resolves on the client.
+  // Fall back to deviceType (also client-side) in the meantime.
+  const isMobileDevice = isMobile ?? deviceType === "mobile";
 
-  // calc() can't go inside a Tailwind class — drive height via style instead.
-  const sectionHeight: React.CSSProperties | undefined = isMobileDevice
-    ? undefined // let mobile flow naturally; remove if you want a fixed height on mobile too
-    : { height: headerHeight && `calc(100dvh - ${headerHeight}px)` };
+  // On desktop: fill exactly the viewport below the header.
+  // On mobile: let content flow naturally (no fixed height).
+  const sectionStyle: React.CSSProperties =
+    !isMobileDevice && headerHeight
+      ? { height: `calc(100dvh - ${headerHeight}px)` }
+      : {};
 
   return (
     <section
-      className={cn("w-full", isMobileDevice && "h-full bg-amber-50")}
-      style={sectionHeight}
+      className={cn(
+        "w-full",
+        // Mobile gets a natural min-height so the hero is never invisible
+        isMobileDevice && "min-h-[60dvh]",
+      )}
+      style={sectionStyle}
     >
       <div className="grid md:grid-cols-[1fr_260px] lg:grid-cols-[1fr_480px] gap-6 w-full max-w-360 h-full mx-auto px-4 py-6 md:px-6 lg:px-8">
-        {/* Carousel with shadcn carousel */}
+        {/* Carousel */}
         <HeroCarousel />
 
-        {/* Small cards (gadgets & fun / home decor) */}
+        {/* Featured side cards */}
         <HeroFeatured />
       </div>
     </section>

@@ -71,7 +71,7 @@ const MobileMenu = forwardRef<HTMLDivElement, MobileMenuProps>(
               ref={ref}
               variants={containerVariants}
               className={cn(
-                "fixed top-0 left-0 h-full w-sm max-w-full bg-background text-foreground border-r shadow-xl p-6 z-50",
+                "fixed top-0 left-0 h-full w-md max-w-full bg-background text-foreground border-r shadow-xl p-6 z-50",
                 className,
               )}
             >

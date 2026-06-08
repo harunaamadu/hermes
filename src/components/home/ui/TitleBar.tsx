@@ -13,7 +13,7 @@ export type TitleProps = {
 const TitleBar = ({ title, description, href, className }: TitleProps) => {
   return (
     <div>
-      <div className={`flex items-center justify-between ${className}`}>
+      <div className={`flex items-center justify-between mb-6 ${className}`}>
         <div>
           <h3 className="font-semibold font-heading text-xl md:text-3xl first-letter:capitalize">
             {title}

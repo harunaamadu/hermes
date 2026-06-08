@@ -21,10 +21,11 @@ const ActionButtons = () => {
 
   const isMobileDevice = isMobile ?? deviceType === "mobile";
 
-  // On mobile, hide buttons explicitly marked mobile:false
+  // On mobile: show buttons marked mobile:true
+  // On desktop: show buttons NOT marked mobile:true (or first 4 overall)
   const buttons = isMobileDevice
-    ? ACTIONBUTTONS.filter((b) => b.mobile === false)
-    : ACTIONBUTTONS.slice(0,4);
+    ? ACTIONBUTTONS.filter((b) => b.mobile !== true)
+    : ACTIONBUTTONS.slice(0, 4);
 
   return (
     <nav className="flex items-center gap-6" aria-label="Header actions">
@@ -53,13 +54,13 @@ const ActionButtons = () => {
                 <NavBadge variant={b.badge.variant} count={badgeCount} />
               )}
             </span>
-            <span className="text-[10px]">{b.label}</span>
+            <span className="text-[10px] lg:hidden">{b.label}</span>
           </>
         );
 
         const sharedClass = cn(
           "flex flex-col items-center gap-1 transition-colors",
-          isActive && "text-foreground"
+          isActive && "text-foreground",
         );
 
         if (isSearchButton) {

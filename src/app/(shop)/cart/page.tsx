@@ -1,4 +1,4 @@
-// src/app/(shop)/dashboard/bag/page.tsx
+// src/app/(shop)/cart/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -48,41 +48,40 @@ const TABS: {
   },
 ];
 
+const PAGE_TITLES: Record<Tab, string> = {
+  cart: "Shopping Cart",
+  wishlist: "Wishlist",
+  history: "Order History",
+};
+
 export default function BagPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Read initial tab from ?tab= param; fall back to "cart"
   const initialTab = (searchParams.get("tab") as Tab) ?? "cart";
   const [tab, setTab] = useState<Tab>(
     TABS.some((t) => t.id === initialTab) ? initialTab : "cart",
   );
 
-  // Sync URL whenever tab changes — shallow replace, no scroll
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
     if (tab === "cart") {
-      params.delete("tab"); // cart is default, keep URL clean
+      params.delete("tab");
     } else {
       params.set("tab", tab);
     }
     const query = params.toString();
-    router.replace(`/cart${query ? `?${query}` : ""}`, {
-      scroll: false,
-    });
+    router.replace(`/cart${query ? `?${query}` : ""}`, { scroll: false });
   }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const renderTab = () => {
     switch (tab) {
       case "cart":
         return <CartTab initialItems={DUMMY_CART_ITEMS} />;
-
       case "wishlist":
         return <WishlistTab initialItems={DUMMY_WISHLIST_ITEMS} />;
-
       case "history":
         return <HistoryTab history={DUMMY_HISTORY} />;
-
       default:
         return null;
     }
@@ -91,17 +90,17 @@ export default function BagPage() {
   return (
     <main className="min-h-dvh w-full">
       <div className="mx-auto w-full max-w-7xl px-4 py-10 md:px-6 lg:px-8">
-        {/* ── Page header ───────────────────────────────────────────── */}
+        {/* Page header */}
         <div className="mb-8 flex flex-col gap-1 border-b border-border pb-6">
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
             Your
           </p>
           <h1 className="text-3xl font-light tracking-tight text-foreground">
-            {tab === "cart" ? "Shopping Cart" : "Wishlist"}
+            {PAGE_TITLES[tab]}
           </h1>
         </div>
 
-        {/* ── Tab bar ────────────────────────────────────────────────── */}
+        {/* Tab bar */}
         <div className="mb-8 flex gap-0 border-b border-border">
           {TABS.map(({ id, label, icon: Icon, count }) => (
             <button
@@ -117,7 +116,6 @@ export default function BagPage() {
             >
               <Icon size={13} />
               {label}
-              {/* Count chip */}
               <span
                 className={cn(
                   "flex items-center justify-center min-w-4.5 px-1 py-px text-[9px] font-bold tabular-nums",
@@ -132,7 +130,7 @@ export default function BagPage() {
           ))}
         </div>
 
-        {/* ── Animated tab content ────────────────────────────────────── */}
+        {/* Animated tab content */}
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={tab}

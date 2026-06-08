@@ -6,25 +6,27 @@ import { Button } from "@/components/ui/button";
 import { SearchIcon, X, Star, TrendingUp } from "lucide-react";
 import {
   DUMMY_SEARCH_ITEMS,
-  SEARCH_CATEGORIES,
-  type SearchItem,
 } from "@/lib/search-data";
 import { useSearchPanel } from "@/context/search-context";
 import { useHeaderHeight } from "@/hooks/use-header-height";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { Label } from "@/components/ui/label";
+import { Product, SEARCH_CATEGORIES } from "@/types/product";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-const TRENDING = [
-  "Merino wool",
-  "Chelsea boots",
-  "Linen trousers",
-  "Field jacket",
-];
+export const TRENDING = DUMMY_SEARCH_ITEMS
+  .filter((product) => product.isTrending)
+  .sort(
+    (a, b) =>
+      (b.createdAt ? new Date(b.createdAt).getTime() : 0) -
+      (a.createdAt ? new Date(a.createdAt).getTime() : 0)
+  )
+  .map((product) => product.name)
+  .slice(0, 10);
 
 function highlight(text: string, query: string) {
   if (!query.trim()) return text;
@@ -45,9 +47,9 @@ function highlight(text: string, query: string) {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-const TagChip = ({ tag }: { tag: SearchItem["tag"] }) => {
-  if (!tag) return null;
-  const map = {
+const TagChip = ({ tag }: { tag: Product["tag"] }) => {
+  if (!tag || Array.isArray(tag)) return null;
+  const map: Record<string, string> = {
     New: "bg-foreground text-background",
     Sale: "bg-destructive text-destructive-foreground",
     Hot: "bg-amber-500 text-white",
@@ -56,7 +58,7 @@ const TagChip = ({ tag }: { tag: SearchItem["tag"] }) => {
     <span
       className={cn(
         "px-1.5 py-px text-[9px] font-bold uppercase tracking-widest",
-        map[tag]
+        map[tag],
       )}
     >
       {tag}
@@ -76,7 +78,7 @@ const ResultCard = ({
   query,
   index,
 }: {
-  item: SearchItem;
+  item: Product;
   query: string;
   index: number;
 }) => (
@@ -100,13 +102,19 @@ const ResultCard = ({
         {highlight(item.name, query)}
       </p>
       <div className="mt-0.5 flex items-center gap-3">
-        <Stars rating={item.rating} />
-        <span className="text-[10px] text-muted-foreground">({item.reviews})</span>
-        <span className="text-[10px] text-muted-foreground">{item.category}</span>
+        <Stars rating={item.review.rating} />
+        <span className="text-[10px] text-muted-foreground">
+          ({item.review.count})
+        </span>
+        <span className="text-[10px] capitalize text-muted-foreground">
+          {item.category}
+        </span>
       </div>
     </div>
     <div className="flex shrink-0 flex-col items-end">
-      <span className="text-sm font-semibold text-foreground">${item.price}</span>
+      <span className="text-sm font-semibold text-foreground">
+        ${item.price}
+      </span>
       {item.originalPrice && (
         <span className="text-[11px] text-muted-foreground line-through">
           ${item.originalPrice}
@@ -154,7 +162,7 @@ const IdleState = ({ onTrending }: { onTrending: (t: string) => void }) => (
 );
 
 // ---------------------------------------------------------------------------
-// Main — self-contained: reads open state and headerHeight from context/hook
+// Main
 // ---------------------------------------------------------------------------
 
 const SearchPanel = () => {
@@ -167,21 +175,17 @@ const SearchPanel = () => {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
 
-  // Focus input whenever panel opens
   useEffect(() => {
     if (isOpen) {
-      // Small delay so the animation doesn't fight focus
       const t = setTimeout(() => inputRef.current?.focus(), 80);
       return () => clearTimeout(t);
     }
   }, [isOpen]);
 
-  // Clear query when panel closes
   useEffect(() => {
     if (!isOpen) setQuery("");
   }, [isOpen]);
 
-  // Escape key closes
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) close();
@@ -224,11 +228,11 @@ const SearchPanel = () => {
           key="search-panel"
           role="search"
           aria-label="Site search"
-          className="w-full bg-background sticky top-0 z-50"
+          // fixed: overlays the page below the header, not part of document flow
+          className="fixed left-0 right-0 z-50 bg-background overflow-hidden"
           style={{
-            height: headerHeight
-              ? `calc(100dvh - ${headerHeight}px)`
-              : "100dvh",
+            top: headerHeight ? `${headerHeight}px` : "0px",
+            bottom: 0,
           }}
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -239,7 +243,7 @@ const SearchPanel = () => {
             className="grid h-full w-full max-w-360 mx-auto px-4 py-4 md:px-6 lg:px-8"
             style={{ gridTemplateRows: "auto auto 1fr auto" }}
           >
-            {/* ── Search bar ─────────────────────────────────────────── */}
+            {/* Search bar */}
             <div className="flex items-center gap-0 border-b border-border pb-4">
               <Label
                 htmlFor={inputId}
@@ -260,14 +264,12 @@ const SearchPanel = () => {
                 spellCheck={false}
               />
 
-              {/* Result count */}
               {hasQuery && (
                 <span className="mr-3 shrink-0 bg-muted px-2 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
                   {results.length} result{results.length !== 1 ? "s" : ""}
                 </span>
               )}
 
-              {/* Clear input */}
               {hasQuery && (
                 <Button
                   variant="ghost"
@@ -280,7 +282,6 @@ const SearchPanel = () => {
                 </Button>
               )}
 
-              {/* Close panel — desktop text button */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -292,7 +293,7 @@ const SearchPanel = () => {
               </Button>
             </div>
 
-            {/* ── Category filter bar ─────────────────────────────────── */}
+            {/* Category filter */}
             {hasQuery && (
               <div className="flex items-center gap-0 overflow-x-auto py-3 scrollbar-none">
                 {SEARCH_CATEGORIES.map((cat) => (
@@ -304,7 +305,7 @@ const SearchPanel = () => {
                       "shrink-0 border-b-2 px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-widest transition-colors",
                       activeCategory === cat
                         ? "border-foreground text-foreground"
-                        : "border-transparent text-muted-foreground hover:text-foreground"
+                        : "border-transparent text-muted-foreground hover:text-foreground",
                     )}
                   >
                     {cat}
@@ -313,7 +314,7 @@ const SearchPanel = () => {
               </div>
             )}
 
-            {/* ── Scrollable results area ─────────────────────────────── */}
+            {/* Scrollable results */}
             <div className="overflow-y-auto">
               {!hasQuery && <IdleState onTrending={handleTrending} />}
 
@@ -335,7 +336,7 @@ const SearchPanel = () => {
               {hasQuery && !hasResults && <EmptyState query={query} />}
             </div>
 
-            {/* ── Close button — bottom, full width, mobile-first ──────── */}
+            {/* Close button — bottom, mobile-first */}
             <div className="border-t border-border pt-3">
               <Button
                 variant="outline"

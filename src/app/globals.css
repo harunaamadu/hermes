@@ -124,6 +124,9 @@
   * {
     @apply border-border outline-ring/50;
   }
+  a {
+    @apply hover:text-primary transition-colors duration-300;
+  }
   body {
     @apply bg-background text-foreground;
   }

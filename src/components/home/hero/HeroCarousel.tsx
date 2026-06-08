@@ -14,6 +14,7 @@ import { useGSAP } from "@gsap/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useDeviceType } from "@/hooks/use-device";
+import SvgImage from "../ui/SvgImage";
 
 gsap.registerPlugin(useGSAP);
 
@@ -30,8 +31,8 @@ interface SlideData {
     default: string;
     mobile?: string;
   };
-  accent: string; // CSS colour used for gradient tint
-  accentText: string; // Tailwind text colour class
+  accent: string;
+  accentText: string;
   tag: string;
 }
 
@@ -42,7 +43,6 @@ interface NavButtonProps {
 }
 
 interface ProgressBarProps {
-  /** 0 – 1 */
   progress: number;
   accent: string;
 }
@@ -82,10 +82,8 @@ const SLIDES: SlideData[] = [
       "Draped in intention. Every cut speaks softly — and lands with extraordinary impact.",
     cta: "Shop Women",
     image: {
-      default:
-        "/images/hero/model-poses-casually-on-ride.jpg",
-      mobile:
-        "/images/hero/young-woman-on-ferris-wheel.jpg",
+      default: "/images/hero/model-poses-casually-on-ride.jpg",
+      mobile: "/images/hero/young-woman-on-ferris-wheel.jpg",
     },
     accent: "#2d1b2e",
     accentText: "text-rose-400",
@@ -109,7 +107,15 @@ const SLIDES: SlideData[] = [
   },
 ];
 
-const AUTOPLAY_DURATION = 6000; // ms
+const AUTOPLAY_DURATION = 6000;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getDotAccent(accent: string): string {
+  if (accent === "#1a1a2e") return "#60a5fa";
+  if (accent === "#2d1b2e") return "#fb7185";
+  return "#34d399";
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -152,14 +158,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ progress, accent }) => (
   <div className="relative h-0.5 w-full bg-white/10 overflow-hidden">
     <motion.div
       className="absolute inset-y-0 left-0"
-      style={{
-        backgroundColor:
-          accent === "#1a1a2e"
-            ? "#60a5fa"
-            : accent === "#2d1b2e"
-              ? "#fb7185"
-              : "#34d399",
-      }}
+      style={{ backgroundColor: getDotAccent(accent) }}
       animate={{ width: `${progress * 100}%` }}
       transition={{ duration: 0.1, ease: "linear" }}
     />
@@ -172,12 +171,7 @@ const SlideIndicator: React.FC<SlideIndicatorProps> = ({
   onSelect,
   accent,
 }) => {
-  const dotAccent =
-    accent === "#1a1a2e"
-      ? "#60a5fa"
-      : accent === "#2d1b2e"
-        ? "#fb7185"
-        : "#34d399";
+  const dotAccent = getDotAccent(accent);
   return (
     <div className="flex items-center gap-2">
       {Array.from({ length: total }).map((_, i) => (
@@ -187,10 +181,11 @@ const SlideIndicator: React.FC<SlideIndicatorProps> = ({
           whileHover={{ scale: 1.3 }}
           whileTap={{ scale: 0.9 }}
           aria-label={`Go to slide ${i + 1}`}
-          className="relative w-2 h-2 overflow-hidden focus:outline-none"
+          className="relative overflow-hidden focus:outline-none"
           style={{
             backgroundColor:
               i === current ? dotAccent : "rgba(255,255,255,0.25)",
+            height: 8,
           }}
           animate={{
             width: i === current ? 24 : 8,
@@ -208,7 +203,6 @@ const SlideIndicator: React.FC<SlideIndicatorProps> = ({
 
 const HeroCarousel: React.FC = () => {
   const [current, setCurrent] = useState<number>(0);
-  const [prev, setPrev] = useState<number>(-1);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [progress, setProgress] = useState<number>(0);
   const [isPaused, setIsPaused] = useState<boolean>(false);
@@ -220,17 +214,11 @@ const HeroCarousel: React.FC = () => {
 
   const imageRef = useRef<HTMLDivElement>(null);
   const bgRef = useRef<HTMLDivElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
 
   const slide = SLIDES[current];
-  const dotAccent =
-    slide.accent === "#1a1a2e"
-      ? "#60a5fa"
-      : slide.accent === "#2d1b2e"
-        ? "#fb7185"
-        : "#34d399";
+  const dotAccent = getDotAccent(slide.accent);
 
-  // ── Slide transition via GSAP ──────────────────────────────────────────────
+  // ── GSAP slide transitions ─────────────────────────────────────────────────
 
   useGSAP(
     () => {
@@ -258,6 +246,15 @@ const HeroCarousel: React.FC = () => {
 
   // ── Autoplay RAF ───────────────────────────────────────────────────────────
 
+  const goTo = useCallback((index: number, dir: 1 | -1) => {
+    setDirection(dir);
+    setCurrent(index);
+    startTimeRef.current = null;
+    pausedAtRef.current = 0;
+    progressRef.current = 0;
+    setProgress(0);
+  }, []);
+
   const tick = useCallback(
     (timestamp: number) => {
       if (isPaused) return;
@@ -273,7 +270,7 @@ const HeroCarousel: React.FC = () => {
         goTo((current + 1) % SLIDES.length, 1);
       }
     },
-    [current, isPaused], // eslint-disable-line react-hooks/exhaustive-deps
+    [current, isPaused, goTo],
   );
 
   useEffect(() => {
@@ -290,19 +287,6 @@ const HeroCarousel: React.FC = () => {
 
   // ── Navigation ─────────────────────────────────────────────────────────────
 
-  const goTo = useCallback(
-    (index: number, dir: 1 | -1) => {
-      setPrev(current);
-      setDirection(dir);
-      setCurrent(index);
-      startTimeRef.current = null;
-      pausedAtRef.current = 0;
-      progressRef.current = 0;
-      setProgress(0);
-    },
-    [current],
-  );
-
   const handlePrev = () => {
     const idx = (current - 1 + SLIDES.length) % SLIDES.length;
     goTo(idx, -1);
@@ -316,10 +300,7 @@ const HeroCarousel: React.FC = () => {
   // ── Framer Motion variants ─────────────────────────────────────────────────
 
   const textVariants: Variants = {
-    hidden: (d: number) => ({
-      y: d > 0 ? 40 : -40,
-      opacity: 0,
-    }),
+    hidden: (d: number) => ({ y: d > 0 ? 40 : -40, opacity: 0 }),
     visible: {
       y: 0,
       opacity: 1,
@@ -341,12 +322,21 @@ const HeroCarousel: React.FC = () => {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
+    // The section must be a positioned container for the absolute children.
+    // Do NOT put vertical padding here — it shrinks the effective h-full area
+    // and causes the absolutely-positioned background to misalign with the
+    // content layer. Instead, padding lives only on the content div below.
     <section
-      className="relative w-full h-full py-12 md:min-h-150 overflow-hidden select-none"
+      className={cn(
+        "relative w-full overflow-hidden select-none",
+        // Desktop: fill the grid cell (height comes from Hero's section style).
+        // Mobile: a comfortable fixed minimum so the carousel is never squashed.
+        "h-full min-h-130 md:min-h-150",
+      )}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* ── Background image ─────────────────────────────────── */}
+      {/* Background image — absolutely covers the whole section */}
       <div ref={imageRef} className="absolute inset-0 z-0">
         <AnimatePresence mode="sync">
           <motion.div
@@ -357,35 +347,34 @@ const HeroCarousel: React.FC = () => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <>
+            <Image
+              src={slide.image.default}
+              alt={slide.category}
+              fill
+              sizes="(min-width: 1024px) 340px, 100vw"
+              quality={100}
+              loading="eager"
+              className={cn(
+                "object-cover object-top",
+                slide.image.mobile ? "hidden lg:block" : "block",
+              )}
+            />
+
+            {slide.image.mobile && (
               <Image
-                src={slide.image.default}
+                src={slide.image.mobile}
                 alt={slide.category}
                 fill
-                sizes="(min-width: 1024px) 340px"
+                sizes="(max-width: 1024px) 100vw"
                 loading="eager"
-                className={cn(
-                    "object-cover object-top",
-                    slide.image?.mobile === null ? "hidden" : "block"
-                )}
+                className="block lg:hidden object-cover object-top"
               />
-
-              {slide.image?.mobile && (
-                <Image
-                  src={slide.image.mobile}
-                  alt={slide.category}
-                  fill
-                  sizes="(max-width: 1024px) 100vw"
-                  loading="eager"
-                  className="block lg:hidden object-cover object-top"
-                />
-              )}
-            </>
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* ── Gradient overlays ─────────────────────────────────── */}
+      {/* Gradient overlays */}
       <div
         ref={bgRef}
         className="absolute inset-0 z-1 pointer-events-none"
@@ -394,12 +383,10 @@ const HeroCarousel: React.FC = () => {
           transition: "background 0.8s ease",
         }}
       />
-      {/* Bottom vignette */}
       <div className="absolute inset-0 z-1 pointer-events-none bg-linear-to-t from-black/80 via-transparent to-transparent" />
-      {/* Left heavy vignette */}
       <div className="absolute inset-0 z-1 pointer-events-none bg-linear-to-r from-black/60 to-transparent" />
 
-      {/* ── Slide number watermark ────────────────────────────── */}
+      {/* Slide number watermark */}
       <div className="absolute right-8 top-1/2 -translate-y-1/2 z-2 pointer-events-none hidden lg:block">
         <AnimatePresence mode="wait">
           <motion.span
@@ -415,8 +402,8 @@ const HeroCarousel: React.FC = () => {
         </AnimatePresence>
       </div>
 
-      {/* ── Main content ──────────────────────────────────────── */}
-      <div className="relative z-10 h-full flex flex-col justify-end pb-14 px-6 md:px-14 lg:px-20 max-w-7xl">
+      {/* Main content — padding lives here, not on the outer section */}
+      <div className="relative z-10 h-full flex flex-col justify-end px-6 md:px-14 lg:px-20 pb-14 pt-12 max-w-7xl">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={`content-${current}`}
@@ -449,13 +436,12 @@ const HeroCarousel: React.FC = () => {
               animate="visible"
               exit="exit"
               className="text-white/50 text-sm font-medium tracking-widest uppercase"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}
               transition={{ delay: 0.05 }}
             >
               {slide.category} · {slide.subtitle}
             </motion.p>
 
-            {/* Big headline */}
+            {/* Headline */}
             <motion.h1
               variants={textVariants}
               custom={direction}
@@ -480,7 +466,6 @@ const HeroCarousel: React.FC = () => {
               animate="visible"
               exit="exit"
               className="max-w-md text-white/60 text-sm md:text-base leading-relaxed"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}
               transition={{ delay: 0.12 }}
             >
               {slide.description}
@@ -519,15 +504,13 @@ const HeroCarousel: React.FC = () => {
           </motion.div>
         </AnimatePresence>
 
-        {/* ── Bottom controls ───────────────────────────────────── */}
+        {/* Bottom controls */}
         <div className="mt-10 flex items-center gap-6">
-          {/* Prev / Next */}
           <div className="flex items-center gap-2">
             <NavButton onClick={handlePrev} direction="prev" />
             <NavButton onClick={handleNext} direction="next" />
           </div>
 
-          {/* Progress + indicators */}
           <div className="flex-1 flex flex-col gap-2.5">
             <ProgressBar progress={progress} accent={slide.accent} />
             <div className="flex items-center justify-between">
@@ -537,9 +520,7 @@ const HeroCarousel: React.FC = () => {
                 onSelect={(i) => goTo(i, i > current ? 1 : -1)}
                 accent={slide.accent}
               />
-              <div
-                className="flex items-center gap-1.5 text-white/30 text-xs tabular-nums"
-              >
+              <div className="flex items-center gap-1.5 text-white/30 text-xs tabular-nums">
                 <span style={{ color: dotAccent }} className="font-bold">
                   0{current + 1}
                 </span>
@@ -558,7 +539,6 @@ const HeroCarousel: React.FC = () => {
             aria-label={isPaused ? "Resume autoplay" : "Pause autoplay"}
           >
             {isPaused ? (
-              /* Play icon */
               <svg
                 width="14"
                 height="14"
@@ -568,7 +548,6 @@ const HeroCarousel: React.FC = () => {
                 <path d="M3 2.5L11 7L3 11.5V2.5Z" />
               </svg>
             ) : (
-              /* Pause icon */
               <svg
                 width="14"
                 height="14"
@@ -583,16 +562,11 @@ const HeroCarousel: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Right-side small slides panel (desktop) ──────────── */}
+      {/* Right-side slide thumbnail panel (xl+) */}
       <div className="absolute right-0 top-0 bottom-0 w-70 lg:w-85 z-10 hidden xl:flex flex-col justify-center gap-3 pr-8">
         {SLIDES.map((s, i) => {
           const isActive = i === current;
-          const sDot =
-            s.accent === "#1a1a2e"
-              ? "#60a5fa"
-              : s.accent === "#2d1b2e"
-                ? "#fb7185"
-                : "#34d399";
+          const sDot = getDotAccent(s.accent);
           return (
             <motion.button
               key={s.id}
@@ -615,6 +589,7 @@ const HeroCarousel: React.FC = () => {
                 alt={s.category}
                 fill
                 sizes="340px"
+                loading="eager"
                 className="object-cover object-top"
               />
               <div

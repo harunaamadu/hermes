@@ -16,17 +16,14 @@ type CardProps = {
   subtitle: string;
   href: string;
   image?: string;
-  /** Number of items / pieces in the collection  */
   itemCount?: number;
-  /** Optional accent colour for the hover underline & badge */
   accent?: string;
   variant?: CardVariant;
   className?: string;
-  /** Index used for staggered entrance animation */
   index?: number;
 };
 
-// ─── Dummy data export (ready to map) ──────────────────────────────────────────
+// ─── Dummy data export ──────────────────────────────────────────────────────────
 
 export const HERO_CARDS: Omit<CardProps, "className">[] = [
   {
@@ -122,12 +119,19 @@ const HeroCard = ({
   // Subtle 3-D tilt on mouse move
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
-  const rotateX = useSpring(useTransform(mouseY, [-0.5, 0.5], [4, -4]), { stiffness: 200, damping: 20 });
-  const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-4, 4]), { stiffness: 200, damping: 20 });
+  const rotateX = useSpring(useTransform(mouseY, [-0.5, 0.5], [4, -4]), {
+    stiffness: 200,
+    damping: 20,
+  });
+  const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-4, 4]), {
+    stiffness: 200,
+    damping: 20,
+  });
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
-    const { left, top, width, height } = cardRef.current.getBoundingClientRect();
+    const { left, top, width, height } =
+      cardRef.current.getBoundingClientRect();
     mouseX.set((e.clientX - left) / width - 0.5);
     mouseY.set((e.clientY - top) / height - 0.5);
   };
@@ -137,22 +141,42 @@ const HeroCard = ({
     mouseY.set(0);
   };
 
-  // Suppress aspect ratio when caller provides an explicit height (e.g. "h-full")
-  const hasExplicitHeight = className?.includes("h-") ?? false;
-  const sizeClass = hasExplicitHeight ? "" : (
-    variant === "landscape" ? "aspect-[16/9]" :
-    variant === "square"    ? "aspect-square"  :
-                              "aspect-[3/4]"
-  );
+  // Detect whether the caller wants the card to stretch to fill its container
+  // rather than sizing itself via an aspect ratio.
+  // Use a precise check — only treat "h-full" / "h-screen" / etc. as explicit,
+  // not arbitrary matches like "hover:" or "h-px".
+  const fillParent =
+    className != null &&
+    /\bh-(full|screen|dvh|svh|lvh|\[.+\])\b/.test(className);
+
+  // Aspect-ratio class used when the card sizes itself
+  const sizeClass = fillParent
+    ? ""
+    : variant === "landscape"
+      ? "aspect-[16/9]"
+      : variant === "square"
+        ? "aspect-square"
+        : "aspect-[3/4]";
 
   return (
+    // Outer wrapper: handles entrance animation and the 3-D perspective context.
+    // When filling the parent (e.g. inside a grid row) it must be a full-height
+    // flex column so the inner card stretches correctly.
     <motion.div
       initial={{ opacity: 0, y: 32 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, delay: index * 0.12, ease: [0.22, 1, 0.36, 1] }}
       style={{ perspective: 800 }}
-      className={cn(hasExplicitHeight && "h-full min-h-0")}
+      className={cn(
+        fillParent
+          ? // Stretch to fill the grid row / flex slot; min-h prevents collapse
+            // when the ancestor height isn't fully resolved yet (e.g. min-h context)
+            "flex flex-col h-full min-h-45 w-full aspect-square md:aspect-auto"
+          : // Otherwise let the aspect ratio set the height
+            "w-full",
+      )}
     >
+      {/* Inner card: applies the 3-D tilt and holds all visible content */}
       <motion.div
         ref={cardRef}
         style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
@@ -160,12 +184,13 @@ const HeroCard = ({
         onMouseLeave={handleMouseLeave}
         className={cn(
           "group relative overflow-hidden bg-neutral-900 cursor-pointer",
-          sizeClass,
-          hasExplicitHeight && "h-full w-full",
+          // When filling the parent the inner card must also stretch
+          fillParent ? "flex-1 h-full w-full" : sizeClass,
+          // Any extra classes from the caller (e.g. "h-full" for HeroFeatured)
           className,
         )}
       >
-        {/* ── Image ──────────────────────────────────────────── */}
+        {/* Image */}
         {image && (
           <motion.div
             className="absolute inset-0"
@@ -183,16 +208,18 @@ const HeroCard = ({
           </motion.div>
         )}
 
-        {/* ── Gradient overlay ───────────────────────────────── */}
+        {/* Gradient overlay */}
         <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent z-10" />
 
-        {/* ── Accent overlay flash on hover ──────────────────── */}
+        {/* Accent overlay on hover */}
         <motion.div
           className="absolute inset-0 z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-          style={{ background: `linear-gradient(135deg, ${accent}18 0%, transparent 60%)` }}
+          style={{
+            background: `linear-gradient(135deg, ${accent}18 0%, transparent 60%)`,
+          }}
         />
 
-        {/* ── Item-count badge ───────────────────────────────── */}
+        {/* Item-count badge */}
         {itemCount !== undefined && (
           <motion.div
             initial={{ opacity: 0, scale: 0.8, y: -8 }}
@@ -202,34 +229,25 @@ const HeroCard = ({
             style={{ borderColor: `${accent}44` }}
           >
             <span className="w-1.5 h-1.5" style={{ backgroundColor: accent }} />
-            <span
-              className="text-[10px] text-neutral-50 font-semibold tracking-widest uppercase"
-            >
+            <span className="text-[10px] text-neutral-50 font-semibold tracking-widest uppercase">
               {itemCount} pieces
             </span>
           </motion.div>
         )}
 
-        {/* ── Text block ─────────────────────────────────────── */}
+        {/* Text block */}
         <div className="absolute bottom-0 left-0 right-0 z-20 p-5 md:p-6">
-          {/* Subtitle slides up into view */}
-          <motion.p
-            className="text-xs font-medium tracking-[0.22em] uppercase mb-1 translate-y-3 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500"
-          >
+          <motion.p className="text-xs font-medium tracking-[0.22em] uppercase mb-1 translate-y-3 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
             {subtitle}
           </motion.p>
 
-          {/* Title */}
           <h3
             className="text-white font-heading font-black leading-none tracking-[-0.02em] mb-3"
-            style={{
-              fontSize: "clamp(1.8rem, 4.2vw, 2.8rem)",
-            }}
+            style={{ fontSize: "clamp(1.8rem, 4.2vw, 2.8rem)" }}
           >
             {title}
           </h3>
 
-          {/* Thin accent line that expands on hover */}
           <motion.div
             className="h-px mb-4 origin-left"
             style={{ backgroundColor: accent }}
@@ -239,7 +257,6 @@ const HeroCard = ({
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           />
 
-          {/* CTA row */}
           <Link
             href={href}
             className={cn(
@@ -272,20 +289,3 @@ const HeroCard = ({
 };
 
 export default HeroCard;
-
-
-// ─── Demo grid (optional usage) ────────────────────────────────────────────────
-//
-// import HeroCard, { HERO_CARDS } from "@/components/shared/HeroCard";
-//
-// Responsive masonry-style grid — landscape cards span 2 cols on md+:
-//
-// <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
-//   {HERO_CARDS.map((card) => (
-//     <HeroCard
-//       key={card.id}
-//       {...card}
-//       className={card.variant === "landscape" ? "sm:col-span-2 lg:col-span-2" : ""}
-//     />
-//   ))}
-// </div>

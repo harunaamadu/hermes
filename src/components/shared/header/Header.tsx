@@ -27,42 +27,35 @@ const Header = () => {
   const menuRef = useRef<HTMLDivElement>(null);
   const categoriesRef = useRef<HTMLDivElement>(null);
 
-  const isMobileDevice = useIsMobile() ?? useDeviceType();
+  // Both hooks always called unconditionally — no conditional hook calls.
+  const isMobile = useIsMobile();
+  const deviceType = useDeviceType();
+
+  // undefined = not yet resolved (SSR / first paint); fall back to deviceType.
+  const isMobileDevice = isMobile ?? deviceType === "mobile";
 
   const [visibleItems, setVisibleItems] = useState(NAV_ITEMS);
   const [overflowItems, setOverflowItems] = useState<typeof NAV_ITEMS>([]);
 
-  // =========================
-  // GLOBAL UI STORE (NEW ARCHITECTURE)
-  // =========================
   const activePanel = useUIStore((s) => s.activePanel);
   const openPanel = useUIStore((s) => s.openPanel);
   const closeAll = useUIStore((s) => s.closeAll);
 
-  // Derived states (IMPORTANT FIX)
   const isMenuOpen = activePanel === "menu";
   const isCategoriesOpen = activePanel === "categories";
   const isMoreOpen = activePanel === "more";
 
-  // =========================
-  // CLICK OUTSIDE (GLOBAL RESET)
-  // =========================
   useClickOutside(
     [navRef, menuRef, categoriesRef] as React.RefObject<HTMLElement>[],
     closeAll,
     isMenuOpen || isCategoriesOpen || isMoreOpen,
   );
 
-  // =========================
-  // RESPONSIVE NAV CALCULATION
-  // =========================
   useEffect(() => {
     const calculateItems = () => {
       if (!navRef.current) return;
-
       const width = navRef.current.offsetWidth;
       const maxItems = Math.max(1, Math.floor((width - 120) / ITEM_WIDTH));
-
       setVisibleItems(NAV_ITEMS.slice(0, maxItems));
       setOverflowItems(NAV_ITEMS.slice(maxItems));
     };
@@ -71,7 +64,6 @@ const Header = () => {
 
     const observer = new ResizeObserver(calculateItems);
     if (navRef.current) observer.observe(navRef.current);
-
     window.addEventListener("resize", calculateItems);
 
     return () => {
@@ -82,13 +74,10 @@ const Header = () => {
 
   return (
     <>
-      {/* ===================== */}
       {/* Announcement Bar */}
-      {/* ===================== */}
       <div id="announcement" className="w-full bg-muted text-muted-foreground">
         <div className="flex items-center justify-between w-full max-w-360 mx-auto py-2 px-4 md:px-6 lg:px-8 text-xs">
           <p>Announcement: Free shipping on orders over $50!</p>
-
           <Button
             variant="destructive"
             size="icon-sm"
@@ -99,19 +88,14 @@ const Header = () => {
         </div>
       </div>
 
-      {/* ========================= */}
-      {/* HEADER */}
-      {/* ========================= */}
+      {/* Header */}
       <header
         id="header"
         className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur-md"
       >
         <div className="flex items-center justify-between w-full max-w-360 mx-auto px-4 py-4 md:px-6 lg:px-8">
-          {/* ========================= */}
-          {/* LEFT SIDE */}
-          {/* ========================= */}
+          {/* Left side */}
           <div className="flex items-center gap-6">
-            {/* MENU BUTTON */}
             <Button
               variant="outline"
               size="icon-lg"
@@ -122,10 +106,8 @@ const Header = () => {
               <MenuIcon className="size-4" />
             </Button>
 
-            {/* LOGO */}
             <Logo />
 
-            {/* CATEGORIES */}
             <div ref={categoriesRef} className="relative hidden md:block">
               <Button
                 variant="outline"
@@ -133,21 +115,14 @@ const Header = () => {
                 onClick={() => openPanel("categories")}
                 aria-label="Open categories"
               >
-                {isCategoriesOpen ? (
-                  <LayoutGrid className="size-4" />
-                ) : (
-                  <LayoutGrid className="size-4" />
-                )}
+                <LayoutGrid className="size-4" />
                 All
               </Button>
-
               <Categories />
             </div>
           </div>
 
-          {/* ========================= */}
-          {/* DESKTOP NAV */}
-          {/* ========================= */}
+          {/* Desktop nav */}
           <nav
             ref={navRef}
             className="hidden lg:flex items-center justify-center gap-6 flex-1"
@@ -163,7 +138,6 @@ const Header = () => {
               </Link>
             ))}
 
-            {/* MORE DROPDOWN */}
             <AnimatePresence mode="wait">
               {overflowItems.length > 0 && (
                 <div className="relative shrink-0">
@@ -200,21 +174,15 @@ const Header = () => {
             </AnimatePresence>
           </nav>
 
-          {/* ========================= */}
-          {/* ACTION BUTTONS */}
-          {/* ========================= */}
+          {/* Action buttons */}
           <ActionButtons />
         </div>
       </header>
 
-      {/* ========================= */}
-      {/* MOBILE MENU */}
-      {/* ========================= */}
+      {/* Mobile Menu */}
       <MobileMenu ref={menuRef} />
 
-      {/* ========================= */}
-      {/* MOBILE BOTTOM NAV */}
-      {/* ========================= */}
+      {/* Mobile Bottom Nav — only on mobile */}
       {isMobileDevice && <MobileNav />}
     </>
   );
